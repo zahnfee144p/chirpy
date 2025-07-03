@@ -20,8 +20,14 @@ func main() {
 	filesrv := http.FileServer(http.Dir(filepathRoot))
 	srvCfg := apiConfig{}
 
+	// app pages
 	mux.Handle("/app/", http.StripPrefix("/app", srvCfg.middlewareMetricsInc(filesrv)))
+
+	// api calls
 	mux.HandleFunc("GET /api/healthz", handleHealthz)
+	mux.HandleFunc("POST /api/validate_chirp", handleValidateChirp)
+
+	// admin pages
 	mux.HandleFunc("GET /admin/metrics", srvCfg.handleMetrics)
 	mux.HandleFunc("POST /admin/reset", srvCfg.handleReset)
 
