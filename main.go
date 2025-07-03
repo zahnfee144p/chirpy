@@ -21,9 +21,9 @@ func main() {
 	srvCfg := apiConfig{}
 
 	mux.Handle("/app/", http.StripPrefix("/app", srvCfg.middlewareMetricsInc(filesrv)))
-	mux.HandleFunc("GET /healthz", handleHealthz)
-	mux.HandleFunc("GET /metrics", srvCfg.handleMetrics)
-	mux.HandleFunc("POST /reset", srvCfg.handleReset)
+	mux.HandleFunc("GET /api/healthz", handleHealthz)
+	mux.HandleFunc("GET /admin/metrics", srvCfg.handleMetrics)
+	mux.HandleFunc("POST /admin/reset", srvCfg.handleReset)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
@@ -34,7 +34,7 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
-// method function
+// method definitions
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
