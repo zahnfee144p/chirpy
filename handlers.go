@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 )
 
@@ -39,60 +38,30 @@ func handleHealthz(w http.ResponseWriter, req *http.Request) {
 
 func handleValidateChirp(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
-	const ChirpMaxLength = 140
-	const ProfanityRepl = "****"
+	const chirpMaxLength = 140
 
-	type chirp struct {
-		Body  string `json:"body"`
-		Error string `json:"error"`
-		Valid bool   `json:"valid"`
+	type parameters struct {
+		Body string `json:"body"`
+	}
+	type returnVals struct {
+		Valid bool `json:"valid"`
+		Body string `json:"cleaned_body"`
 	}
 
 	decoder := json.NewDecoder(req.Body)
-	data := chirp{}
+	params := parameters{}
 
-	if err := decoder.Decode(&data); err != nil {
-		log.Printf("Error decoding request body: %v", err)
-		data.Error = "Something went wrong"
+	if err := decoder.Decode(&params); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "error decoding parameters", err)
+	}
 
-		jsonData, err := json.Marshal(data)
-		if err != nil {
-			log.Printf("Error marshalling JSON: %s", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write(jsonData)
+	if len(params.Body) > chirpMaxLength {
+		respondWithError(w, http.StatusBadRequest, "chirp is too long", nil)
 		return
 	}
 
-	if len(data.Body) > ChirpMaxLength {
-		data.Error = "Chirp is too long"
-		jsonData, err := json.Marshal(data)
-		if err != nil {
-			log.Printf("Error marshalling JSON: %s", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(jsonData)
-		return
-	}
-
-	data.Valid = true
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		log.Printf("Error marshalling JSON: %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonData)
+	respondWithJSON(w, http.StatusOK, returnVals{
+		Valid: true,
+		Body: replaceProfanity(params.Body),
+	})
 }
-
-// func replaceProfanity(body string) string {
-// 	return ""
-// }

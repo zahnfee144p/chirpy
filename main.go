@@ -1,13 +1,20 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
+
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
+	"github.com/zahnfee144p/chirpy/internal/database"
 )
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	dbQueries *database.Queries
 }
 
 // function definitions
@@ -16,9 +23,18 @@ func main() {
 	const filepathRoot = "."
 	const port = "8080"
 
+	godotenv.Load()
+	dbURL := os.Getenv("DB_URL")
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatalf("could not open database, exiting: %s", err)
+		return 
+	}
+
 	mux := http.NewServeMux()
 	filesrv := http.FileServer(http.Dir(filepathRoot))
 	srvCfg := apiConfig{}
+	srvCfg.dbQueries = database.New(db)
 
 	// app pages
 	mux.Handle("/app/", http.StripPrefix("/app", srvCfg.middlewareMetricsInc(filesrv)))
