@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"os"
 	"sync/atomic"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/zahnfee144p/chirpy/internal/database"
@@ -14,7 +16,15 @@ import (
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
-	dbQueries *database.Queries
+	dbQueries      *database.Queries
+	platform       string
+}
+
+type User struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
 }
 
 // function definitions
@@ -28,13 +38,14 @@ func main() {
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("could not open database, exiting: %s", err)
-		return 
+		return
 	}
 
 	mux := http.NewServeMux()
 	filesrv := http.FileServer(http.Dir(filepathRoot))
 	srvCfg := apiConfig{}
 	srvCfg.dbQueries = database.New(db)
+	srvCfg.platform = os.Getenv("PLATFORM")
 
 	// app pages
 	mux.Handle("/app/", http.StripPrefix("/app", srvCfg.middlewareMetricsInc(filesrv)))
@@ -42,6 +53,7 @@ func main() {
 	// api calls
 	mux.HandleFunc("GET /api/healthz", handleHealthz)
 	mux.HandleFunc("POST /api/validate_chirp", handleValidateChirp)
+	mux.HandleFunc("POST /api/users", srvCfg.handleUsers)
 
 	// admin pages
 	mux.HandleFunc("GET /admin/metrics", srvCfg.handleMetrics)
